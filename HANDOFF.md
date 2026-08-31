@@ -11,8 +11,18 @@ frames. Node 20.9+ is required by Next 16.
 
 Verified on bun 1.3.11 and 1.4.0. `bun.lock` is the text lockfile, which needs
 bun 1.2 or newer; 1.4 leaves it byte for byte identical, so the two can share a
-branch without fighting over it. Vercel picks its own bun from the lockfile and
-documents no way to pin a minor, so nothing here should depend on one.
+branch without fighting over it.
+
+Vercel picks the bun for the **build** from the lockfile. It can be pinned, with
+`bunx bun@1.4.0 install` as the Install Command in project settings or
+`vercel.json`. Nothing is pinned here, because both versions produce the same
+lockfile and the same build, and a pin costs a bun download on every build.
+
+`bunVersion` in `vercel.json` is a different thing and does **not** affect the
+build: it moves Vercel *Functions* off Node onto the Bun runtime, and it takes
+a major (`1.x`) with Vercel managing the minor. These routes run on Node. Bun
+1.4 as a functions runtime is opt-in and carries its own breaking changes, so
+adopting it would be a deliberate decision, not a version bump.
 
 ## File map
 

@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Shell colours are sampled from the frames themselves, not chosen from a
+   palette generator. The accent is per-photo and arrives as --accent on the
+   page at runtime, so a green forest frame and a frosted dawn frame each
+   colour their own buy panel. */
+@theme {
+  --color-night: #080c0a;
+  --color-shadow: #151a15;
+  --color-teal: #396055;
+  --color-teal-dim: #22352f;
+  --color-paper: #e6e2d6;
+  --color-paper-dim: #9ba096;
+
+  --font-display: "Bodoni Moda", ui-serif, Georgia, serif;
+  --font-body: "Karla", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --accent: #e27509;
+}
+
+html {
+  background: var(--color-night);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-night);
+  color: var(--color-paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The one place the design spends its boldness: a film strip you scroll
+   through, with grease pencil on the frame you picked. */
+.perf {
+  height: 12px;
+  background-image: radial-gradient(circle at 8px 50%, #000 0 3.4px, transparent 3.6px);
+  background-size: 22px 12px;
+  opacity: 0.85;
+}
+
+.grease path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

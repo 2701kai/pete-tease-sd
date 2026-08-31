@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
+import { bySlug } from "@/lib/catalogue";
+import { fitFor, papers, priceOf, sheetsFor } from "@/lib/pricing";
+
+// Lazy: constructing at module scope blows up `next build`, which loads
+// every route to collect page data before any env vars exist.
+const client = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+export async function POST(req: Request) {
+  const { slug, sheetId, paperId } = await req.json();
+
+  // Price on the server from the catalogue, never from the request body.
+  // Otherwise the A2 costs whatever the browser feels like today.
+  const photo = bySlug(slug);
+  const sheet = photo ? sheetsFor(photo.ratio).find((s) => s.id === sheetId) : undefined;
+  const paper = papers.find((p) => p.id === paperId);
+
+  if (!photo || !sheet || !paper) {
+    return NextResponse.json({ error: "Unknown print" }, { status: 400 });
+  }
+  if (photo.remaining <= 0) {
+    return NextResponse.json({ error: "Edition sold out" }, { status: 409 });
+  }
+
+  const fit = fitFor(photo.ratio, sheet);
+  const amount = priceOf(sheet, paper);
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const session = await client().checkout.sessions.create({
+    mode: "payment",
+    // Prodigi needs a real address to route to a lab, and GST needs a country.
+    shipping_address_collection: {
+      allowed_countries: ["NZ", "AU", "GB", "US", "CA", "DE", "AT", "CH", "NL", "FR", "IE"],
+    },
+    automatic_tax: { enabled: true },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "nzd",
+          unit_amount: amount * 100,
+          // Stripe Tax needs this to work out GST vs VAT vs nothing.
+          tax_behavior: "inclusive",
+          product_data: {
+            name: `${photo.title} — ${sheet.label}`,
+            description: `${paper.name}. Edition of ${photo.edition}.`,
+            images: [`${site}/photos/${photo.slug}-thumb.jpg`],
+          },
+        },
+      },
+    ],
+    // Everything the webhook needs to place the print order, and nothing the
+    // customer can tamper with, because Stripe echoes it back signed.
+    metadata: {
+      slug: photo.slug,
+      sku: sheet.sku,
+      sizing: fit.sizing,
+      paper: paper.id,
+      sheet: sheet.id,
+    },
+    success_url: `${site}/thanks?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${site}/#${photo.slug}`,
+  });
+
+  return NextResponse.json({ url: session.url });
+}

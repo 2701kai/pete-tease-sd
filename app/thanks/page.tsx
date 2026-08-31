@@ -2,9 +2,10 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { bySlug, thumb } from "@/lib/catalogue";
 import { nzd, papers, sheetsFor } from "@/lib/pricing";
+import { stripe } from "@/lib/stripe";
 
 export const metadata: Metadata = {
   title: "Thank you — Pete Noir",
@@ -15,10 +16,6 @@ export const metadata: Metadata = {
 // Stripe is only reachable at request time, and the session id arrives in the
 // query string. Never try to prerender this.
 export const dynamic = "force-dynamic";
-
-// Lazy: constructing at module scope blows up `next build`, which loads
-// every route to collect page data before any env vars exist.
-const client = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 function Shell({ children, accent }: { children: React.ReactNode; accent?: string }) {
   return (
@@ -63,7 +60,7 @@ export default async function Thanks({
 
   let session: Stripe.Checkout.Session;
   try {
-    session = await client().checkout.sessions.retrieve(session_id);
+    session = await stripe().checkout.sessions.retrieve(session_id);
   } catch (err) {
     // A stale or invented session id lands here. Say so plainly rather than
     // rendering a 500 at somebody who has very likely just paid.

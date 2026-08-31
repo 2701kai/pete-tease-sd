@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { signedMasterUrl } from "@/lib/masters";
 import { createOrder } from "@/lib/prodigi";
-
-// Lazy: constructing at module scope blows up `next build`, which loads
-// every route to collect page data before any env vars exist.
-const client = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/lib/stripe";
 
 // Stripe signs the raw body. Any parsing before verification breaks it.
 export async function POST(req: Request) {
@@ -14,7 +11,7 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
   try {
-    event = client().webhooks.constructEvent(raw, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripe().webhooks.constructEvent(raw, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err) {
     return NextResponse.json({ error: `Bad signature: ${err}` }, { status: 400 });
   }

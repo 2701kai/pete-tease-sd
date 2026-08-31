@@ -26,7 +26,9 @@ documents no way to pin a minor, so nothing here should depend on one.
 | `lib/site.ts` | This deployment's own origin. Read it before touching `success_url`. |
 | `app/thanks/page.tsx` | Where Stripe's `success_url` lands. Reads the session, shows the order. |
 | `app/api/repete/route.ts` | Signup. Same answer whether the address is new or known. |
-| `app/store.tsx` | The whole UI, one client component. Per-photo accent via `--accent`. |
+| `app/store.tsx` | The picker: hero, buy panel, and the state the two share. Per-photo accent via `--accent`. |
+| `app/_components/` | The sections that do not touch the picker state, plus `Choice`. |
+| `lib/stripe.ts` | The lazily constructed client. Four routes had their own copy. |
 | `app/api/checkout/route.ts` | Prices server-side from the catalogue, never from the request body. |
 | `app/api/webhooks/stripe/route.ts` | Verify → sign master URL → one Prodigi order. |
 | `scripts/sync-skus.ts` | `bun run skus`. Verifies the SKU table against Prodigi. |
@@ -70,6 +72,14 @@ documents no way to pin a minor, so nothing here should depend on one.
   a green forest frame and a frosted dawn frame each colour their own panel.
 - **Sizes sort by price, not by ratio fit.** Fit is communicated by the warning,
   not by reordering the price list into an order nobody expects.
+- **The UI is a component tree, not one file.** `store.tsx` keeps the hero and
+  the buy panel because they share the picker state; the film strip, Re-Pete
+  and the footer do not, so they left. `SiteFooter` has no state at all and so
+  stays out of the client bundle. What matters is unchanged: the accent still
+  arrives as `--accent` and every control still colours itself from it.
+- **`Choice` is one component because the two lists were one design.** Size and
+  paper were the same twenty lines twice, differing only in where three strings
+  came from.
 - **The site URL is derived, not hardcoded.** Stripe redirects to
   `success_url` and fetches the line item image, so a wrong origin costs a real
   customer. On Vercel the deployment's own hostname is used unless

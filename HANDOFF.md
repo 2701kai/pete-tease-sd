@@ -5,8 +5,9 @@ working or explicitly stubbed. Nothing is half-done and undocumented.
 
 ## What runs
 
-`bun install && bun run build` passes on Next 15.5 / React 19 / Tailwind v4.
-`bun dev` gives the full storefront with all ten frames.
+`bun install && bun run build` passes on Next 16.3 / React 19.2 / Tailwind v4.3,
+type-checked by TypeScript 7. `bun dev` gives the full storefront with all ten
+frames. Node 20.9+ is required by Next 16.
 
 ## File map
 
@@ -51,7 +52,23 @@ working or explicitly stubbed. Nothing is half-done and undocumented.
   a green forest frame and a frosted dawn frame each colour their own panel.
 - **Sizes sort by price, not by ratio fit.** Fit is communicated by the warning,
   not by reordering the price list into an order nobody expects.
+- **Turbopack builds, because Next 16 makes it the default.** There is no
+  webpack config to migrate, so nothing opts out. `next build --webpack` is the
+  escape hatch if that ever changes.
+- **`typecheck` runs `next typegen` first.** Next generates route types into
+  `.next/types`, and `next-env.d.ts` is gitignored. Without the typegen step a
+  fresh checkout type-checks against types that aren't there yet.
+- **The shipping address comes from `collected_information`.** Stripe removed
+  the top-level `shipping_details` from Checkout Sessions, so the old fallback
+  is gone rather than merely unused.
+- **The Stripe SDK pins the API version it ships with** (`2026-08-26.dahlia`).
+  Nothing in the code overrides it, so a future SDK bump moves the API version
+  too. Re-read the webhook payload handling when that happens.
 
 ## House rules
 
 No `CLAUDE.md`, no `.claude/` in this repo. Author is `2701kai`.
+
+`next dev` writes an `AGENTS.md` (and a `CLAUDE.md` that just points at it)
+on every run. Both are gitignored rather than committed, so the rule above
+survives contact with Next 16. Delete them freely; they come back.

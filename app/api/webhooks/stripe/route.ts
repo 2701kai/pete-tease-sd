@@ -25,7 +25,9 @@ export async function POST(req: Request) {
 
   const session = event.data.object as Stripe.Checkout.Session;
   const m = session.metadata ?? {};
-  const ship = session.collected_information?.shipping_details ?? session.shipping_details;
+  // Stripe removed the top-level `shipping_details` from Checkout Sessions.
+  // `collected_information` is the only place the address lives now.
+  const ship = session.collected_information?.shipping_details;
 
   if (!ship?.address || !m.slug || !m.sku) {
     // Nothing to print. Return 200 so Stripe stops retrying a payload that
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
       merchantReference: `${m.slug}/${m.sheet}`,
       shippingMethod: "Standard",
       recipient: {
-        name: ship.name ?? "Customer",
+        name: ship.name,
         email: session.customer_details?.email ?? undefined,
         address: {
           line1: ship.address.line1 ?? "",

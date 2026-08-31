@@ -12,6 +12,9 @@ cp .env.example .env.local   # fill it in
 bun dev
 ```
 
+Node 20.9+, per Next 16. `bun run typecheck` runs `next typegen` before `tsc`,
+because the generated route types are not in git.
+
 ## How a print actually gets made
 
 1. Someone picks a frame, a sheet and a paper. The browser sends only ids.

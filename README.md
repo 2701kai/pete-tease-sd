@@ -12,8 +12,9 @@ cp .env.example .env.local   # fill it in
 bun dev
 ```
 
-Node 20.9+, per Next 16. `bun run typecheck` runs `next typegen` before `tsc`,
-because the generated route types are not in git.
+Node 20.9+, per Next 16, and bun 1.2+ for the text lockfile. `bun run typecheck`
+runs `next typegen` before `tsc`, because the generated route types are not in
+git.
 
 ## How a print actually gets made
 

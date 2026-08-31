@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { joinRepete, normaliseEmail } from "@/lib/members";
-
-// Lazy: constructing at module scope blows up `next build`, which loads
-// every route to collect page data before any env vars exist.
-const client = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -23,7 +19,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    await joinRepete(client(), email);
+    await joinRepete(stripe(), email);
   } catch (err) {
     // Stripe was reachable enough to take money five minutes ago, so this is
     // worth looking at rather than swallowing.

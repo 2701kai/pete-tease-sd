@@ -2,8 +2,12 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { preview, thumb, type Photo } from "@/lib/catalogue";
+import { preview, type Photo } from "@/lib/catalogue";
 import { fitFor, nzd, papers, priceOf, sheetsFor } from "@/lib/pricing";
+import Choice from "./_components/Choice";
+import FilmStrip from "./_components/FilmStrip";
+import RePete from "./_components/RePete";
+import SiteFooter from "./_components/SiteFooter";
 
 export default function Store({ photos }: { photos: Photo[] }) {
   const [i, setI] = useState(0);
@@ -13,9 +17,6 @@ export default function Store({ photos }: { photos: Photo[] }) {
   // The address a returning buyer gives so the Re-Pete price can be looked up.
   // It is only a hint: the discount is decided server side from Stripe.
   const [buyerEmail, setBuyerEmail] = useState("");
-  const [joinEmail, setJoinEmail] = useState("");
-  const [joinState, setJoinState] = useState<"idle" | "sending" | "done" | "error">("idle");
-  const [joinError, setJoinError] = useState<string | null>(null);
 
   const photo = photos[i];
   const sheets = useMemo(() => sheetsFor(photo.ratio), [photo.ratio]);
@@ -46,29 +47,6 @@ export default function Store({ photos }: { photos: Photo[] }) {
       else alert(data.error ?? "Checkout is not available right now.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function join(e: React.FormEvent) {
-    e.preventDefault();
-    setJoinState("sending");
-    setJoinError(null);
-    try {
-      const res = await fetch("/api/repete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: joinEmail.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setJoinState("done");
-      } else {
-        setJoinState("error");
-        setJoinError(data.error ?? "That did not go through.");
-      }
-    } catch {
-      setJoinState("error");
-      setJoinError("No connection. Try again in a moment.");
     }
   }
 
@@ -146,67 +124,31 @@ export default function Store({ photos }: { photos: Photo[] }) {
           <h2 className="font-display text-[clamp(1.7rem,4.6vw,2.5rem)] italic leading-tight">{photo.title}</h2>
           <p className="mt-1 mb-7 text-[0.9rem] text-paper-dim">{photo.note}</p>
 
-          <fieldset className="mb-7 min-w-0 border-0 p-0">
-            <legend className="mb-3 text-[0.82rem] text-teal">Size</legend>
-            <div className="grid gap-1.5" role="group" aria-label="Print size">
-              {sheets.map((s) => {
-                const on = s.id === sheet.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setSheetId(s.id)}
-                    className="flex w-full items-baseline justify-between gap-4 border px-3.5 py-3 text-left transition-colors"
-                    style={{
-                      borderColor: on ? "var(--accent)" : "var(--color-teal-dim)",
-                      background: on ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "transparent",
-                    }}
-                  >
-                    <span className="text-[0.95rem]">
-                      {s.label}
-                      <span className="mt-0.5 block text-[0.78rem] text-paper-dim">
-                        {s.mm[0]} × {s.mm[1]} mm
-                      </span>
-                    </span>
-                    <span className="whitespace-nowrap text-[0.88rem] tabular-nums" style={{ color: on ? "var(--accent)" : undefined }}>
-                      {nzd(s.price)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
+          <Choice
+            legend="Size"
+            groupLabel="Print size"
+            selectedId={sheet.id}
+            onSelect={setSheetId}
+            options={sheets.map((s) => ({
+              id: s.id,
+              label: s.label,
+              note: `${s.mm[0]} × ${s.mm[1]} mm`,
+              aside: nzd(s.price),
+            }))}
+          />
 
-          <fieldset className="mb-7 min-w-0 border-0 p-0">
-            <legend className="mb-3 text-[0.82rem] text-teal">Paper</legend>
-            <div className="grid gap-1.5" role="group" aria-label="Paper stock">
-              {papers.map((p) => {
-                const on = p.id === paper.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setPaperId(p.id)}
-                    className="flex w-full items-baseline justify-between gap-4 border px-3.5 py-3 text-left transition-colors"
-                    style={{
-                      borderColor: on ? "var(--accent)" : "var(--color-teal-dim)",
-                      background: on ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "transparent",
-                    }}
-                  >
-                    <span className="text-[0.95rem]">
-                      {p.name}
-                      <span className="mt-0.5 block text-[0.78rem] text-paper-dim">{p.note}</span>
-                    </span>
-                    <span className="whitespace-nowrap text-[0.88rem] tabular-nums" style={{ color: on ? "var(--accent)" : undefined }}>
-                      {p.surcharge === 0 ? "included" : `+ ${nzd(p.surcharge)}`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
+          <Choice
+            legend="Paper"
+            groupLabel="Paper stock"
+            selectedId={paper.id}
+            onSelect={setPaperId}
+            options={papers.map((p) => ({
+              id: p.id,
+              label: p.name,
+              note: p.note,
+              aside: p.surcharge === 0 ? "included" : `+ ${nzd(p.surcharge)}`,
+            }))}
+          />
 
           {fit.warning && (
             <p className="mb-5 border-l-2 py-1 pl-3 text-[0.85rem] text-paper-dim" style={{ borderColor: "var(--accent)" }}>
@@ -254,170 +196,11 @@ export default function Store({ photos }: { photos: Photo[] }) {
         </div>
       </section>
 
-      {/* The walk. Ordered as it was walked, east to west. */}
-      <section id="walk" className="border-t border-teal-dim py-[clamp(3.5rem,8vw,6rem)]">
-        <div className="mx-auto mb-7 flex w-[min(100%-2.5rem,1180px)] flex-wrap items-baseline justify-between gap-6">
-          <h2 className="font-display text-[clamp(1.7rem,4.6vw,2.4rem)] italic">The walk</h2>
-          <p className="text-[0.88rem] text-paper-dim">In the order it happened, inland to the coast.</p>
-        </div>
+      <FilmStrip photos={photos} selected={i} onPick={pick} />
 
-        <div className="overflow-x-auto bg-[#0b0f0d] py-4 [scroll-snap-type:x_mandatory]">
-          <div className="perf" role="presentation" />
-          <div className="flex gap-2 px-4 py-2">
-            {photos.map((p, n) => {
-              const on = n === i;
-              return (
-                <button
-                  key={p.slug}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => pick(n)}
-                  className="relative w-[min(74vw,278px)] flex-none bg-black text-left [scroll-snap-align:center]"
-                >
-                  <div className="relative aspect-[3/2] w-full">
-                    <Image
-                      src={thumb(p.slug)}
-                      alt={p.title}
-                      fill
-                      sizes="278px"
-                      className="object-cover transition-opacity"
-                      style={{ opacity: on ? 1 : 0.62 }}
-                    />
-                  </div>
-                  <svg
-                    className="pointer-events-none absolute -inset-[7px] grease"
-                    viewBox="0 0 300 210"
-                    preserveAspectRatio="none"
-                    aria-hidden="true"
-                    style={{ opacity: on ? 1 : 0, ["--accent" as string]: p.accent }}
-                  >
-                    <path d="M14 22 C 60 6, 240 4, 288 20 C 297 60, 296 156, 287 190 C 232 205, 62 206, 12 189 C 4 150, 5 58, 15 21" />
-                  </svg>
-                  <span className="flex items-baseline justify-between gap-3 px-0.5 pt-2 text-[0.76rem] text-paper-dim">
-                    <span className={on ? "text-paper" : undefined}>{p.title}</span>
-                    <span className="text-teal tabular-nums">{String(n + 1).padStart(2, "0")}A</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="perf" role="presentation" />
-        </div>
-      </section>
+      <RePete />
 
-      {/* Re-Pete */}
-      <section id="repete" className="mx-auto grid w-[min(100%-2.5rem,1180px)] gap-[clamp(1.8rem,4vw,3.5rem)] border-t border-teal-dim py-[clamp(3.5rem,8vw,6rem)] lg:grid-cols-[auto_1fr] lg:items-start">
-        <p className="font-display text-[clamp(2.6rem,9vw,4.6rem)] font-semibold leading-[0.9] whitespace-nowrap">
-          Re<span className="text-paper/60">-</span>Pete
-        </p>
-        <div>
-          <h2 className="mb-3 text-[1.06rem] font-semibold">For anyone who comes back for a second frame</h2>
-          <p className="mb-5 max-w-[64ch] text-paper-dim">
-            These were shot as one walk, so they hang as one walk. Buy a second and the collector price applies to that
-            one and every one after it.
-          </p>
-          <ul className="mb-7 max-w-[64ch] list-none p-0">
-            {[
-              ["15%", "off every print after your first, forever, no code needed"],
-              ["48 h", "early access to new work before it goes public"],
-              ["Free", "shipping within New Zealand and Australia"],
-              ["Match", "Pete keeps your paper and size on file so a pair actually hangs as a pair"],
-            ].map(([k, v]) => (
-              <li key={k} className="flex gap-4 border-t border-teal-dim py-2.5 text-[0.94rem]">
-                <b className="w-[4.2rem] flex-none font-medium tabular-nums" style={{ color: "var(--accent)" }}>
-                  {k}
-                </b>
-                <span>{v}</span>
-              </li>
-            ))}
-          </ul>
-          {joinState === "done" ? (
-            <p
-              className="max-w-[64ch] border-l-2 py-1 pl-3 text-[0.94rem]"
-              style={{ borderColor: "var(--accent)" }}
-              role="status"
-            >
-              You&apos;re in. Use that address at checkout and the collector price applies from your
-              second print onward.
-            </p>
-          ) : (
-            <form className="flex max-w-[64ch] flex-wrap gap-2" onSubmit={join}>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={joinEmail}
-                onChange={(e) => setJoinEmail(e.target.value)}
-                placeholder="you@somewhere.nz"
-                aria-invalid={joinState === "error" || undefined}
-                aria-describedby={joinError ? "repete-error" : undefined}
-                className="min-w-0 flex-1 basis-60 border border-teal-dim bg-shadow px-3.5 py-3 text-[0.92rem] placeholder:text-[#5e6660] focus:border-[var(--accent)] focus:outline-none"
-              />
-              <button
-                type="submit"
-                disabled={joinState === "sending"}
-                className="border px-6 py-3 text-[0.88rem] tracking-[0.05em] transition-colors disabled:opacity-60"
-                style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
-              >
-                {joinState === "sending" ? "Signing you up" : "Join Re-Pete"}
-              </button>
-            </form>
-          )}
-          {joinError && (
-            <p id="repete-error" role="alert" className="mt-3 text-[0.85rem]" style={{ color: "var(--accent)" }}>
-              {joinError}
-            </p>
-          )}
-          <p className="mt-4 text-[0.8rem] text-paper-dim">Free. One email when new work lands, nothing else.</p>
-        </div>
-      </section>
-
-      <footer id="about" className="border-t border-teal-dim py-[clamp(2.5rem,6vw,4rem)] text-[0.87rem]">
-        <div className="mx-auto w-[min(100%-2.5rem,1180px)]">
-          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
-            <div>
-              <h3 className="mb-2 font-display text-[1.35rem] italic">For Pete&apos;s sake</h3>
-              <p className="mb-3 max-w-[42ch] text-paper-dim">
-                Pete Noir is Pete, a photographer who walks in first and sets up second. He shoots long, prints large,
-                and answers his own email.
-              </p>
-              <p className="text-paper-dim">Aotearoa New Zealand</p>
-            </div>
-            <div>
-              <h3 className="mb-2 font-display text-[1.35rem] italic">Prints</h3>
-              <ul className="list-none p-0 text-paper-dim">
-                {["Sizes and papers", "Editions and certificates", "Shipping and returns", "Framing"].map((t) => (
-                  <li key={t} className="py-1">
-                    <a href="#buy" className="hover:text-paper">
-                      {t}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-2 font-display text-[1.35rem] italic">Elsewhere</h3>
-              <ul className="list-none p-0 text-paper-dim">
-                {["Instagram", "Licensing and commissions", "Contact Pete"].map((t) => (
-                  <li key={t} className="py-1">
-                    <a href="#about" className="hover:text-paper">
-                      {t}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="mt-10 flex flex-wrap justify-between gap-4 border-t border-teal-dim pt-5 text-[0.78rem] text-[#5e6660]">
-            <span>© {new Date().getFullYear()} Pete Noir. Photographs may not be reproduced.</span>
-            <span>Prices in NZD, GST included.</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

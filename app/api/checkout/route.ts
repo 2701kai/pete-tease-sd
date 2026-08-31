@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { bySlug } from "@/lib/catalogue";
 import { type Membership, membershipFor, normaliseEmail } from "@/lib/members";
 import { fitFor, papers, priceOf, repetePrice, sheetsFor } from "@/lib/pricing";
 import { siteUrl } from "@/lib/site";
-
-// Lazy: constructing at module scope blows up `next build`, which loads
-// every route to collect page data before any env vars exist.
-const client = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   const { slug, sheetId, paperId, email } = await req.json();
@@ -25,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Edition sold out" }, { status: 409 });
   }
 
-  const stripe = client();
+  const client = stripe();
   const fit = fitFor(photo.ratio, sheet);
   const full = priceOf(sheet, paper);
   const site = siteUrl();
@@ -36,7 +32,7 @@ export async function POST(req: Request) {
   let member: Membership | null = null;
   if (buyer) {
     try {
-      member = await membershipFor(stripe, buyer);
+      member = await membershipFor(client, buyer);
     } catch (err) {
       // A lookup failure must not cost someone their checkout. Full price is
       // the wrong answer, but it is a recoverable one.
@@ -47,7 +43,7 @@ export async function POST(req: Request) {
   const entitled = member?.entitled ?? false;
   const amount = entitled ? repetePrice(full) : full;
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await client.checkout.sessions.create({
     mode: "payment",
     // Prodigi needs a real address to route to a lab, and GST needs a country.
     shipping_address_collection: {

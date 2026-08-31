@@ -9,6 +9,21 @@ working or explicitly stubbed. Nothing is half-done and undocumented.
 type-checked by TypeScript 7. `bun dev` gives the full storefront with all ten
 frames. Node 20.9+ is required by Next 16.
 
+Verified on bun 1.3.11 and 1.4.0. `bun.lock` is the text lockfile, which needs
+bun 1.2 or newer; 1.4 leaves it byte for byte identical, so the two can share a
+branch without fighting over it.
+
+Vercel picks the bun for the **build** from the lockfile. It can be pinned, with
+`bunx bun@1.4.0 install` as the Install Command in project settings or
+`vercel.json`. Nothing is pinned here, because both versions produce the same
+lockfile and the same build, and a pin costs a bun download on every build.
+
+`bunVersion` in `vercel.json` is a different thing and does **not** affect the
+build: it moves Vercel *Functions* off Node onto the Bun runtime, and it takes
+a major (`1.x`) with Vercel managing the minor. These routes run on Node. Bun
+1.4 as a functions runtime is opt-in and carries its own breaking changes, so
+adopting it would be a deliberate decision, not a version bump.
+
 ## File map
 
 | Path | What it is |
@@ -21,7 +36,9 @@ frames. Node 20.9+ is required by Next 16.
 | `lib/site.ts` | This deployment's own origin. Read it before touching `success_url`. |
 | `app/thanks/page.tsx` | Where Stripe's `success_url` lands. Reads the session, shows the order. |
 | `app/api/repete/route.ts` | Signup. Same answer whether the address is new or known. |
-| `app/store.tsx` | The whole UI, one client component. Per-photo accent via `--accent`. |
+| `app/store.tsx` | The picker: hero, buy panel, and the state the two share. Per-photo accent via `--accent`. |
+| `app/_components/` | The sections that do not touch the picker state, plus `Choice`. |
+| `lib/stripe.ts` | The lazily constructed client. Four routes had their own copy. |
 | `app/api/checkout/route.ts` | Prices server-side from the catalogue, never from the request body. |
 | `app/api/webhooks/stripe/route.ts` | Verify → sign master URL → one Prodigi order. |
 | `scripts/sync-skus.ts` | `bun run skus`. Verifies the SKU table against Prodigi. |
@@ -65,6 +82,14 @@ frames. Node 20.9+ is required by Next 16.
   a green forest frame and a frosted dawn frame each colour their own panel.
 - **Sizes sort by price, not by ratio fit.** Fit is communicated by the warning,
   not by reordering the price list into an order nobody expects.
+- **The UI is a component tree, not one file.** `store.tsx` keeps the hero and
+  the buy panel because they share the picker state; the film strip, Re-Pete
+  and the footer do not, so they left. `SiteFooter` has no state at all and so
+  stays out of the client bundle. What matters is unchanged: the accent still
+  arrives as `--accent` and every control still colours itself from it.
+- **`Choice` is one component because the two lists were one design.** Size and
+  paper were the same twenty lines twice, differing only in where three strings
+  came from.
 - **The site URL is derived, not hardcoded.** Stripe redirects to
   `success_url` and fetches the line item image, so a wrong origin costs a real
   customer. On Vercel the deployment's own hostname is used unless

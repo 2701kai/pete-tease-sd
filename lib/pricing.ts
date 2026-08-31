@@ -109,6 +109,23 @@ export function priceOf(sheet: Sheet, paper: Paper): number {
   return sheet.price + paper.surcharge;
 }
 
+/** Re-Pete: 15% off every print after the first. See lib/members.ts. */
+export const REPETE_RATE = 0.15;
+
+/**
+ * Whole dollars, because every other price in the catalogue is one and a
+ * checkout line reading NZ$335.75 would look like a mistake rather than a
+ * discount.
+ *
+ * Rounds down, not to nearest. The page promises 15% off, and rounding to
+ * nearest quietly delivers 14.92% on the sheets that land on a half dollar —
+ * charging NZ$502 where the promise is NZ$501.50. Down is always at least the
+ * 15% advertised, and costs Pete at most a dollar a print.
+ */
+export function repetePrice(full: number): number {
+  return Math.floor(full * (1 - REPETE_RATE));
+}
+
 /** Explicitly NZ$, not $. Half the customers are not in New Zealand. */
 export const nzd = (n: number) =>
   "NZ$" + new Intl.NumberFormat("en-NZ", { maximumFractionDigits: 0 }).format(n);

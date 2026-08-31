@@ -40,6 +40,19 @@ customer receives a differently composed photograph.
 Run `bun run skus` to verify the SKU table against Prodigi's real catalogue
 before going live.
 
+## Re-Pete
+
+The returning-buyer scheme. There is no members table: the Stripe Customer is
+the member record, because Stripe already holds both facts the scheme needs —
+who someone is, and what they have already bought.
+
+Signing up (`/api/repete`) creates or flags a Stripe Customer. At checkout the
+buyer may give that address; `app/api/checkout/route.ts` looks up their paid
+Checkout Sessions and applies 15% **server side** if there is at least one. The
+browser never sends a price or a claim to membership, and the site never tells
+the browser whether an address is known — that would be an enumeration oracle
+over Pete's customer list.
+
 ## Masters
 
 `/public/photos` holds 1400px previews only. The print-resolution files live in

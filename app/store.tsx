@@ -10,6 +10,12 @@ export default function Store({ photos }: { photos: Photo[] }) {
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [paperId, setPaperId] = useState(papers[0].id);
   const [busy, setBusy] = useState(false);
+  // The address a returning buyer gives so the Re-Pete price can be looked up.
+  // It is only a hint: the discount is decided server side from Stripe.
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [joinEmail, setJoinEmail] = useState("");
+  const [joinState, setJoinState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const photo = photos[i];
   const sheets = useMemo(() => sheetsFor(photo.ratio), [photo.ratio]);
@@ -28,13 +34,41 @@ export default function Store({ photos }: { photos: Photo[] }) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: photo.slug, sheetId: sheet.id, paperId: paper.id }),
+        body: JSON.stringify({
+          slug: photo.slug,
+          sheetId: sheet.id,
+          paperId: paper.id,
+          email: buyerEmail.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
       else alert(data.error ?? "Checkout is not available right now.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function join(e: React.FormEvent) {
+    e.preventDefault();
+    setJoinState("sending");
+    setJoinError(null);
+    try {
+      const res = await fetch("/api/repete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: joinEmail.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setJoinState("done");
+      } else {
+        setJoinState("error");
+        setJoinError(data.error ?? "That did not go through.");
+      }
+    } catch {
+      setJoinState("error");
+      setJoinError("No connection. Try again in a moment.");
     }
   }
 
@@ -180,6 +214,24 @@ export default function Store({ photos }: { photos: Photo[] }) {
             </p>
           )}
 
+          <div className="mb-5 border-t border-teal-dim pt-5">
+            <label htmlFor="buyer-email" className="mb-2 block text-[0.82rem] text-teal">
+              Bought before?
+            </label>
+            <input
+              id="buyer-email"
+              type="email"
+              autoComplete="email"
+              value={buyerEmail}
+              onChange={(e) => setBuyerEmail(e.target.value)}
+              placeholder="you@somewhere.nz"
+              className="w-full border border-teal-dim bg-shadow px-3.5 py-3 text-[0.92rem] placeholder:text-[#5e6660] focus:border-[var(--accent)] focus:outline-none"
+            />
+            <p className="mt-2 text-[0.78rem] text-paper-dim">
+              Optional. Your Re-Pete price is applied at checkout, no code needed.
+            </p>
+          </div>
+
           <div className="mb-4 flex items-baseline justify-between gap-4 border-t border-teal-dim pt-5">
             <span className="text-[0.78rem] text-paper-dim">Total, GST included</span>
             <span className="font-display text-[2rem] tabular-nums">{nzd(priceOf(sheet, paper))}</span>
@@ -279,25 +331,47 @@ export default function Store({ photos }: { photos: Photo[] }) {
               </li>
             ))}
           </ul>
-          <form className="flex max-w-[64ch] flex-wrap gap-2" onSubmit={(e) => e.preventDefault()}>
-            <label htmlFor="email" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@somewhere.nz"
-              className="min-w-0 flex-1 basis-60 border border-teal-dim bg-shadow px-3.5 py-3 text-[0.92rem] placeholder:text-[#5e6660] focus:border-[var(--accent)] focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="border px-6 py-3 text-[0.88rem] tracking-[0.05em] transition-colors"
-              style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+          {joinState === "done" ? (
+            <p
+              className="max-w-[64ch] border-l-2 py-1 pl-3 text-[0.94rem]"
+              style={{ borderColor: "var(--accent)" }}
+              role="status"
             >
-              Join Re-Pete
-            </button>
-          </form>
+              You&apos;re in. Use that address at checkout and the collector price applies from your
+              second print onward.
+            </p>
+          ) : (
+            <form className="flex max-w-[64ch] flex-wrap gap-2" onSubmit={join}>
+              <label htmlFor="email" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={joinEmail}
+                onChange={(e) => setJoinEmail(e.target.value)}
+                placeholder="you@somewhere.nz"
+                aria-invalid={joinState === "error" || undefined}
+                aria-describedby={joinError ? "repete-error" : undefined}
+                className="min-w-0 flex-1 basis-60 border border-teal-dim bg-shadow px-3.5 py-3 text-[0.92rem] placeholder:text-[#5e6660] focus:border-[var(--accent)] focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={joinState === "sending"}
+                className="border px-6 py-3 text-[0.88rem] tracking-[0.05em] transition-colors disabled:opacity-60"
+                style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+              >
+                {joinState === "sending" ? "Signing you up" : "Join Re-Pete"}
+              </button>
+            </form>
+          )}
+          {joinError && (
+            <p id="repete-error" role="alert" className="mt-3 text-[0.85rem]" style={{ color: "var(--accent)" }}>
+              {joinError}
+            </p>
+          )}
           <p className="mt-4 text-[0.8rem] text-paper-dim">Free. One email when new work lands, nothing else.</p>
         </div>
       </section>

@@ -17,6 +17,10 @@ frames. Node 20.9+ is required by Next 16.
 | `lib/pricing.ts` | Sheets, papers, and `fitFor()` — the ratio logic that stops the lab cropping. Read this one first. |
 | `lib/prodigi.ts` | Print API v4 client. `createOrder` takes an idempotency key. |
 | `lib/masters.ts` | **Stub.** Needs wiring to real storage. |
+| `lib/members.ts` | Re-Pete. The Stripe Customer *is* the member record; there is no table. |
+| `lib/site.ts` | This deployment's own origin. Read it before touching `success_url`. |
+| `app/thanks/page.tsx` | Where Stripe's `success_url` lands. Reads the session, shows the order. |
+| `app/api/repete/route.ts` | Signup. Same answer whether the address is new or known. |
 | `app/store.tsx` | The whole UI, one client component. Per-photo accent via `--accent`. |
 | `app/api/checkout/route.ts` | Prices server-side from the catalogue, never from the request body. |
 | `app/api/webhooks/stripe/route.ts` | Verify → sign master URL → one Prodigi order. |
@@ -33,12 +37,18 @@ frames. Node 20.9+ is required by Next 16.
    Prodigi's public reference does not list a fine art paper SKU to check them
    against — the examples it gives (`GLOBAL-CFPM-16X20`, `GLOBAL-CAN-10x10`)
    are canvas — so only the account catalogue settles this.
-3. **`/thanks` does not exist.** Stripe's `success_url` points at it.
-4. **Editions are static numbers in the catalogue file.** `remaining` never
+3. **Editions are static numbers in the catalogue file.** `remaining` never
    decrements. Needs a store (Postgres, KV, whatever) before two people can buy
    the last print of an edition of 25.
-5. **Re-Pete is a form that does nothing.** No customer record, no 15%
-   application at checkout, no early-access gate.
+4. **Re-Pete's early access is still a promise, not a gate.** The 15% and the
+   customer record are real; the 48-hour window is not, because nothing in the
+   catalogue models a release date. The free NZ/AU shipping line is also not
+   implemented — checkout charges no shipping to anyone, so it reads as true
+   only by accident.
+5. **`/api/repete` has no rate limit.** It is an unauthenticated endpoint that
+   creates Stripe Customers. It cannot be used to read anything back, but it
+   can be used to fill the account with junk. Put a limiter in front of it
+   before launch.
 6. Pete has not confirmed titles, locations, prices or edition sizes.
 
 ## Decisions already made, don't undo by accident
@@ -55,6 +65,27 @@ frames. Node 20.9+ is required by Next 16.
   a green forest frame and a frosted dawn frame each colour their own panel.
 - **Sizes sort by price, not by ratio fit.** Fit is communicated by the warning,
   not by reordering the price list into an order nobody expects.
+- **The site URL is derived, not hardcoded.** Stripe redirects to
+  `success_url` and fetches the line item image, so a wrong origin costs a real
+  customer. On Vercel the deployment's own hostname is used unless
+  `NEXT_PUBLIC_SITE_URL` overrides it, which keeps a preview checkout on the
+  preview. Where nothing resolves on Vercel it throws, because `localhost` is
+  never the right answer in a deployment.
+- **Stripe is the Re-Pete member record.** It already knows who someone is and
+  what they have bought, which is exactly what "15% off after your first"
+  needs, so there is no members table. This deliberately leaves the store
+  choice in open item 3 free.
+- **The discount is decided server side, from Stripe's payment history.** The
+  browser sends an email; it does not send a price or a claim to be a member.
+- **Nothing tells the browser whether an address is a member.** The buy panel
+  says the price is applied at checkout rather than previewing it, because an
+  endpoint that answers "has this person bought from Pete?" is an enumeration
+  oracle over his customer list.
+- **`repetePrice` rounds down.** Rounding to nearest delivers 14.92% on the
+  sheets that land on a half dollar, and the page promises 15%.
+- **Checkout sets `customer_creation: "always"` when there is no customer.**
+  Without a Customer attached, a purchase leaves no history, and Re-Pete never
+  starts for anyone.
 - **Turbopack builds, because Next 16 makes it the default.** There is no
   webpack config to migrate, so nothing opts out. `next build --webpack` is the
   escape hatch if that ever changes.

@@ -40,6 +40,40 @@ customer receives a differently composed photograph.
 Run `bun run skus` to verify the SKU table against Prodigi's real catalogue
 before going live.
 
+## Deploying
+
+Vercel builds this from `main`. Two things to set before real money moves:
+
+1. **Environment variables**, from `.env.example`. Without `STRIPE_SECRET_KEY`
+   the store renders but checkout returns 502 — the Stripe clients are lazy, so
+   the build itself does not need them.
+2. **The Stripe webhook**, pointing at `https://<domain>/api/webhooks/stripe`,
+   with its signing secret in `STRIPE_WEBHOOK_SECRET`. Until that exists Stripe
+   takes the money and no print is ever ordered.
+
+`NEXT_PUBLIC_SITE_URL` is optional on Vercel. When it is unset, `lib/site.ts`
+uses the deployment's own hostname, so a preview redirects back to the preview
+rather than to production. Set it to the canonical domain in production. If
+neither it nor Vercel's system environment variables are available, checkout
+fails loudly rather than sending a paying customer to `localhost`.
+
+Preview deployments with Deployment Protection turned on will not complete a
+test checkout: Stripe cannot fetch the line item image, and the redirect back
+lands on a login wall.
+
+## Re-Pete
+
+The returning-buyer scheme. There is no members table: the Stripe Customer is
+the member record, because Stripe already holds both facts the scheme needs —
+who someone is, and what they have already bought.
+
+Signing up (`/api/repete`) creates or flags a Stripe Customer. At checkout the
+buyer may give that address; `app/api/checkout/route.ts` looks up their paid
+Checkout Sessions and applies 15% **server side** if there is at least one. The
+browser never sends a price or a claim to membership, and the site never tells
+the browser whether an address is known — that would be an enumeration oracle
+over Pete's customer list.
+
 ## Masters
 
 `/public/photos` holds 1400px previews only. The print-resolution files live in

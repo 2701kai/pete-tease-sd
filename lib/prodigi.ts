@@ -3,6 +3,14 @@
 
 const BASE = process.env.PRODIGI_BASE_URL ?? "https://api.sandbox.prodigi.com/v4.0";
 
+/** The five tiers Prodigi's v4 reference documents. */
+export type ShippingMethod =
+  | "Budget"
+  | "Standard"
+  | "StandardPlus"
+  | "Express"
+  | "Overnight";
+
 export type Recipient = {
   name: string;
   email?: string;
@@ -49,7 +57,7 @@ async function call<T>(path: string, body: unknown): Promise<T> {
 export function quote(input: {
   destinationCountryCode: string;
   items: Pick<OrderItem, "sku" | "copies">[];
-  shippingMethod?: "Budget" | "Standard" | "Express" | "Overnight";
+  shippingMethod?: ShippingMethod;
 }) {
   return call<unknown>("/quotes", {
     shippingMethod: input.shippingMethod ?? "Standard",
@@ -68,7 +76,7 @@ export function quote(input: {
 export function createOrder(input: {
   recipient: Recipient;
   items: OrderItem[];
-  shippingMethod?: "Budget" | "Standard" | "Express" | "Overnight";
+  shippingMethod?: ShippingMethod;
   idempotencyKey: string;
   merchantReference?: string;
 }) {

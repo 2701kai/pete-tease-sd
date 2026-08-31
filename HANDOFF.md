@@ -30,6 +30,9 @@ frames. Node 20.9+ is required by Next 16.
 2. **SKUs are unverified.** The codes in `lib/pricing.ts` are the right shape
    (`GLOBAL-FAP-16X24`) but were not checked against the account catalogue.
    Run `bun run skus` with a sandbox key and fix what comes back with `✗`.
+   Prodigi's public reference does not list a fine art paper SKU to check them
+   against — the examples it gives (`GLOBAL-CFPM-16X20`, `GLOBAL-CAN-10x10`)
+   are canvas — so only the account catalogue settles this.
 3. **`/thanks` does not exist.** Stripe's `success_url` points at it.
 4. **Editions are static numbers in the catalogue file.** `remaining` never
    decrements. Needs a store (Postgres, KV, whatever) before two people can buy
@@ -58,6 +61,13 @@ frames. Node 20.9+ is required by Next 16.
 - **`typecheck` runs `next typegen` first.** Next generates route types into
   `.next/types`, and `next-env.d.ts` is gitignored. Without the typegen step a
   fresh checkout type-checks against types that aren't there yet.
+- **TypeScript 7 works because Next shells out to `tsc`.** TS 7 ships no
+  JavaScript compiler API (it is the Go binary; an API is promised for 7.1), so
+  Next 16.3 runs the project-local CLI instead and documents `typescript@^7` as
+  supported. Two consequences: `experimental.useTypeScriptCli: false` would
+  fail with `E1467` against TS 7, and build diagnostics are plain `tsc` output
+  without Next's route-aware code frames. `tsconfig` keeps `plugins: [next]`
+  for editors, which is unrelated to the build.
 - **The shipping address comes from `collected_information`.** Stripe removed
   the top-level `shipping_details` from Checkout Sessions, so the old fallback
   is gone rather than merely unused.

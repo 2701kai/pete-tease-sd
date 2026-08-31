@@ -9,6 +9,11 @@ working or explicitly stubbed. Nothing is half-done and undocumented.
 type-checked by TypeScript 7. `bun dev` gives the full storefront with all ten
 frames. Node 20.9+ is required by Next 16.
 
+Verified on bun 1.3.11 and 1.4.0. `bun.lock` is the text lockfile, which needs
+bun 1.2 or newer; 1.4 leaves it byte for byte identical, so the two can share a
+branch without fighting over it. Vercel picks its own bun from the lockfile and
+documents no way to pin a minor, so nothing here should depend on one.
+
 ## File map
 
 | Path | What it is |

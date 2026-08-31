@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { bySlug } from "@/lib/catalogue";
 import { type Membership, membershipFor, normaliseEmail } from "@/lib/members";
 import { fitFor, papers, priceOf, repetePrice, sheetsFor } from "@/lib/pricing";
+import { siteUrl } from "@/lib/site";
 
 // Lazy: constructing at module scope blows up `next build`, which loads
 // every route to collect page data before any env vars exist.
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   const stripe = client();
   const fit = fitFor(photo.ratio, sheet);
   const full = priceOf(sheet, paper);
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const site = siteUrl();
 
   // The Re-Pete price is decided here, from Stripe's payment history, and never
   // from anything the browser claims. An unknown address simply pays full price.

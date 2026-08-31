@@ -18,6 +18,7 @@ frames. Node 20.9+ is required by Next 16.
 | `lib/prodigi.ts` | Print API v4 client. `createOrder` takes an idempotency key. |
 | `lib/masters.ts` | **Stub.** Needs wiring to real storage. |
 | `lib/members.ts` | Re-Pete. The Stripe Customer *is* the member record; there is no table. |
+| `lib/site.ts` | This deployment's own origin. Read it before touching `success_url`. |
 | `app/thanks/page.tsx` | Where Stripe's `success_url` lands. Reads the session, shows the order. |
 | `app/api/repete/route.ts` | Signup. Same answer whether the address is new or known. |
 | `app/store.tsx` | The whole UI, one client component. Per-photo accent via `--accent`. |
@@ -64,6 +65,12 @@ frames. Node 20.9+ is required by Next 16.
   a green forest frame and a frosted dawn frame each colour their own panel.
 - **Sizes sort by price, not by ratio fit.** Fit is communicated by the warning,
   not by reordering the price list into an order nobody expects.
+- **The site URL is derived, not hardcoded.** Stripe redirects to
+  `success_url` and fetches the line item image, so a wrong origin costs a real
+  customer. On Vercel the deployment's own hostname is used unless
+  `NEXT_PUBLIC_SITE_URL` overrides it, which keeps a preview checkout on the
+  preview. Where nothing resolves on Vercel it throws, because `localhost` is
+  never the right answer in a deployment.
 - **Stripe is the Re-Pete member record.** It already knows who someone is and
   what they have bought, which is exactly what "15% off after your first"
   needs, so there is no members table. This deliberately leaves the store
